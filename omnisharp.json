@@ -1,0 +1,14 @@
+{
+    "formattingOptions": {
+        "SpaceAfterMethodCallName": false,
+        "SpaceAfterControlFlowStatementKeyword": false,
+        "NewLinesForBracesInMethods": false,
+        "NewLinesForBracesInControlBlocks": false,
+        "NewLinesForBracesInProperties": false,
+        "NewLinesForBracesInAccessors": false,
+        "NewLinesForBracesInTypes": false,
+        "NewLineForElse": false,
+        "NewLineForCatch": false,
+        "NewLineForFinally": false
+    }
+}

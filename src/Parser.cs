@@ -19,12 +19,20 @@ namespace Ion {
         Token NextToken() {
             _position++;
             if(_position >= _tokens.Count) return _tokens[_tokens.Count-1];
-            return _tokens[_position];
+            Current = _tokens[_position];
+            return Current;
+        }
+
+        AST_Expression NextTokenWith(AST_Expression ast) {
+            NextToken();
+            return ast;
         }
 
         void Eat(TokenType tokenType) { // MAYBE: return the eaten token
             if(Current.TokenType != tokenType) return; // CORRECT: throw error
+            Console.WriteLine("HERE");
             NextToken();
+            Console.WriteLine(Current);
         }
 
         public AST_Block run() {
@@ -49,7 +57,7 @@ namespace Ion {
 
         private AST_Expression ParseExpression() {
             switch(Current.TokenType) {
-                case TokenType.IDENTIFIER: // IDENTIFIER
+                case TokenType.IDENTIFIER: { // IDENTIFIER
                     string value = Current.Value;
                     switch(NextToken().TokenType) {
                         case TokenType.IDENTIFIER: // IDENTIFIER IDENTIFIER
@@ -70,9 +78,18 @@ namespace Ion {
                             return new AST_Assignment(GetVariable(value), valueExpression);
                         }
                         default:
+                            Console.WriteLine("]] Unimplemented exception 1: " + Current);
                             throw new NotImplementedException();
                     }
+                }
+                case TokenType.INTEGER: { // INTEGER
+                    return NextTokenWith(new AST_Integer(Current.Value));
+                }
+                case TokenType.FLOAT: { // FLOAT
+                    return NextTokenWith(new AST_Float(Current.Value));
+                }
                 default:
+                    Console.WriteLine("]] Unimplemented exception 2: " + Current);
                     throw new NotImplementedException();
             }
         }

@@ -12,9 +12,13 @@ namespace Ion {
         public static void Main(string[] args) {
             Lexer lexer = new Lexer(inFile, File.ReadAllText(inFile));
             var tokens = lexer.run();
-            foreach(var token in tokens) {
-                Console.WriteLine(token);
-            }
+            Console.WriteLine("TOKENS:");
+            foreach(var token in tokens) Console.WriteLine(token);
+            Console.WriteLine();
+            Parser parser = new Parser(tokens);
+            AST root = parser.run();
+            Console.WriteLine("AST:");
+            Console.WriteLine(root);
         }
         
     }

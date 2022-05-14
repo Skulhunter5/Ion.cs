@@ -28,7 +28,7 @@ namespace Ion {
         public string Value { get; }
 
         public override string ToString() {
-            string str = "Token(" + TokenType;
+            string str = "Token(" + TokenType + ",position=\"" + Position + "\"";
             switch(TokenType) {
                 case TokenType.IDENTIFIER:
                 case TokenType.INTEGER:

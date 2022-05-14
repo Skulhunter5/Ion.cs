@@ -114,6 +114,7 @@ namespace Ion {
                 tokens.Add(token);
                 token = NextToken();
             }
+            tokens.Add(token);
 
             return tokens;
         }

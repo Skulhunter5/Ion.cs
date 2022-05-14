@@ -7,6 +7,7 @@ namespace Ion {
         BLOCK,
 
         // Expressions
+        INTEGER, FLOAT,
         ASSIGNMENT,
     }
 
@@ -49,6 +50,30 @@ namespace Ion {
 
         public override string ToString() {
             return base.ToString() + ",variable=" + Variable + ",value=" + Value + ")";
+        }
+    }
+
+    sealed class AST_Integer : AST_Expression {
+        public AST_Integer(string value) : base(ASTType.INTEGER) {
+            Value = value;
+        }
+
+        public string Value { get; }
+
+        public override string ToString() {
+            return base.ToString() + ",value=" + Value + ")";
+        }
+    }
+
+    sealed class AST_Float : AST_Expression {
+        public AST_Float(string value) : base(ASTType.FLOAT) {
+            Value = value;
+        }
+
+        public string Value { get; }
+
+        public override string ToString() {
+            return base.ToString() + ",value=" + Value + ")";
         }
     }
 

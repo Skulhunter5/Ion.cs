@@ -1,5 +1,3 @@
-using System;
-
 namespace Ion {
 
     abstract class Error {}

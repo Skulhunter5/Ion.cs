@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Ion {
@@ -7,6 +8,8 @@ namespace Ion {
         private List<Token> _tokens;
         private int _position = 0;
         private Token Current;
+
+        private Dictionary<string, Variable> _variables = new Dictionary<string, Variable>();
 
         public Parser(List<Token> tokens) {
             _tokens = tokens;
@@ -30,7 +33,11 @@ namespace Ion {
 
         private AST_Block ParseBlock() {
             List<AST> statements = new List<AST>();
-            while(Current.TokenType != TokenType.EOF) statements.Add(ParseStatement());
+            while(Current.TokenType != TokenType.EOF) {
+                AST ast = ParseStatement();
+                if(ast == null) continue;
+                statements.Add(ast);
+            }
             return new AST_Block(statements);
         }
 
@@ -40,30 +47,45 @@ namespace Ion {
             return expression;
         }
 
-        private AST ParseExpression() {
+        private AST_Expression ParseExpression() {
             switch(Current.TokenType) {
-                case TokenType.IDENTIFIER:
+                case TokenType.IDENTIFIER: // IDENTIFIER
                     string value = Current.Value;
                     switch(NextToken().TokenType) {
-                        case TokenType.IDENTIFIER: // Declaration
+                        case TokenType.IDENTIFIER: // IDENTIFIER IDENTIFIER
                             string value2 = Current.Value;
                             NextToken();
-                            if(Current.TokenType == TokenType.ASSIGN) {
+                            if(Current.TokenType == TokenType.ASSIGN) { // IDENTIFIER IDENTIFIER =
                                 NextToken();
-                                AST valueExpression = ParseExpression();
-                                // Add variable declaration
-                                return new AST_Assignment();
+                                AST_Expression valueExpression = ParseExpression();
+                                Variable variable = DeclareVariable(value2);
+                                return new AST_Assignment(variable, valueExpression);
                             } else {
-                                // Add variable declaration
+                                DeclareVariable(value2);
+                                return null;
                             }
-                            break;
-                        case TokenType.ASSIGN: // Definition
-                            break;
+                        case TokenType.ASSIGN: { // IDENTIFIER =
+                            NextToken(); // Eat: ASSIGN
+                            AST_Expression valueExpression = ParseExpression();
+                            return new AST_Assignment(GetVariable(value), valueExpression);
+                        }
+                        default:
+                            throw new NotImplementedException();
                     }
-                    break;
                 default:
-                    return null; // CORRECT: throw error
+                    throw new NotImplementedException();
             }
+        }
+
+        private Variable DeclareVariable(string identifier) {
+            Variable variable = new Variable(identifier);
+            _variables.Add(identifier, variable);
+            return variable;
+        }
+
+        private Variable GetVariable(string identifier) {
+            if(!_variables.ContainsKey(identifier)) throw new NotImplementedException();
+            return _variables[identifier];
         }
 
     }

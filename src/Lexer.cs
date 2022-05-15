@@ -61,6 +61,11 @@ namespace Ion {
             return new Token(isFloat ? TokenType.FLOAT : TokenType.INTEGER, position, value);
         }
 
+        private static readonly HashSet<string> keywords = new HashSet<string>() {
+            "if",
+            "else",
+        };
+
         private Token ParseIdentifier() {
             Position position = new Position(_file, _line, _column);
             string identifier = "";
@@ -68,6 +73,8 @@ namespace Ion {
                 identifier += c;
                 Advance();
             }
+            
+            if(keywords.Contains(identifier)) return new Token(TokenType.KEYWORD, position, identifier);
             return new Token(TokenType.IDENTIFIER, position, identifier);
         }
 

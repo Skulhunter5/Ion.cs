@@ -66,6 +66,23 @@ namespace Ion {
                 NextToken(); // Eat: SEMICOLON
                 return null;
             }
+            if(Current.TokenType == TokenType.IDENTIFIER) {
+                switch(Current.Value) {
+                    case "if": {
+                        NextToken(); // Eat: IDENTIFIER "if"
+                        Eat(TokenType.LPAREN);
+                        AST_Expression condition = ParseExpression();
+                        Eat(TokenType.RPAREN);
+                        AST_Block ifBlock = ParseBlock();
+                        AST_Block elseBlock = null;
+                        if(Current.TokenType == TokenType.IDENTIFIER && Current.Value == "else") {
+                            NextToken(); // Eat: IDENTIFIER "else"
+                            elseBlock = ParseBlock();
+                        }
+                        return new AST_If(condition, ifBlock, elseBlock);
+                    }
+                }
+            }
             AST expression = ParseExpression();
             Eat(TokenType.SEMICOLON);
             return expression;

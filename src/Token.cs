@@ -5,6 +5,7 @@ namespace Ion {
 
         SEMICOLON,
 
+        KEYWORD,
         IDENTIFIER,
         INTEGER, FLOAT,
 
@@ -34,6 +35,7 @@ namespace Ion {
         public override string ToString() {
             string str = "Token(" + TokenType + ",position=\"" + Position + "\"";
             switch(TokenType) {
+                case TokenType.KEYWORD:
                 case TokenType.IDENTIFIER:
                 case TokenType.INTEGER:
                 case TokenType.FLOAT:

@@ -8,6 +8,10 @@ namespace Ion {
         IDENTIFIER,
         INTEGER, FLOAT,
 
+        LPAREN, RPAREN,
+        LBRACE, RBRACE,
+        LBRACK, RBRACK,
+
         EQ, LT, GT, LTEQ, GTEQ, NEQ,
         ASSIGN, NOT,
     }

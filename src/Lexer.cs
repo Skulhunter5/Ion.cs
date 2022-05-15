@@ -82,6 +82,18 @@ namespace Ion {
             Position position = new Position(_file, _line, _column);
 
             switch(c) {
+                case '(':
+                    return AdvanceWith(new Token(TokenType.LPAREN, position));
+                case ')':
+                    return AdvanceWith(new Token(TokenType.RPAREN, position));
+                case '{':
+                    return AdvanceWith(new Token(TokenType.LBRACE, position));
+                case '}':
+                    return AdvanceWith(new Token(TokenType.RBRACE, position));
+                case '[':
+                    return AdvanceWith(new Token(TokenType.LBRACK, position));
+                case ']':
+                    return AdvanceWith(new Token(TokenType.RBRACK, position));
                 case ';':
                     return AdvanceWith(new Token(TokenType.SEMICOLON, position));
                 case '=':

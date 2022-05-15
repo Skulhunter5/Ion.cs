@@ -42,4 +42,18 @@ namespace Ion {
         }
     }
 
+    sealed class ExpectedDifferentTokenError : LexerError {
+        public ExpectedDifferentTokenError(TokenType expected, Token got) {
+            Expected = expected;
+            Got = got;
+        }
+
+        public TokenType Expected { get; }
+        public Token Got { get; }
+
+        public override string ToString() {
+            return base.ToString() + "Unexpected token " + Got + ", expected token of type " + Expected;
+        }
+    }
+
 }

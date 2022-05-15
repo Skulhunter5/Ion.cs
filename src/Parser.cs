@@ -66,7 +66,7 @@ namespace Ion {
                 NextToken(); // Eat: SEMICOLON
                 return null;
             }
-            if(Current.TokenType == TokenType.IDENTIFIER) {
+            if(Current.TokenType == TokenType.KEYWORD) {
                 switch(Current.Value) {
                     case "if": {
                         NextToken(); // Eat: IDENTIFIER "if"
@@ -75,7 +75,7 @@ namespace Ion {
                         Eat(TokenType.RPAREN);
                         AST_Block ifBlock = ParseBlock();
                         AST_Block elseBlock = null;
-                        if(Current.TokenType == TokenType.IDENTIFIER && Current.Value == "else") {
+                        if(Current.TokenType == TokenType.KEYWORD && Current.Value == "else") {
                             NextToken(); // Eat: IDENTIFIER "else"
                             elseBlock = ParseBlock();
                         }

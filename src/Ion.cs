@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Ion {
 
-    class Program {
+    class Ion {
 
         private static readonly string linuxDir = "\\\\wsl$\\Ubuntu-20.04\\shared\\";
         private static readonly string inFile = linuxDir + "test.ion";
@@ -12,13 +12,18 @@ namespace Ion {
         public static void Main(string[] args) {
             Lexer lexer = new Lexer(inFile, File.ReadAllText(inFile));
             var tokens = lexer.run();
-            Console.WriteLine("TOKENS:");
-            foreach(var token in tokens) Console.WriteLine(token);
-            Console.WriteLine();
             Parser parser = new Parser(tokens);
-            AST root = parser.run();
-            Console.WriteLine("AST:");
-            Console.WriteLine(root);
+            Program program = parser.run();
+            Console.WriteLine(program);
+            string asm = program.GenerateAssembly();
+            Console.WriteLine("Generated assembly with " + CountLines(asm) + " lines.");
+            File.WriteAllText(outFile, asm);
+        }
+
+        private static int CountLines(string text) {
+            int n = 1;
+            for(int i = 0; i < text.Length; i++) if(text[i] == '\n') n++;
+            return n;
         }
         
     }

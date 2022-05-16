@@ -9,6 +9,7 @@ namespace Ion {
         private int _position = 0;
         private Token Current;
 
+        private Dictionary<string, Function> _functions = new Dictionary<string, Function>();
         private Dictionary<string, Variable> _variables = new Dictionary<string, Variable>();
 
         public Parser(List<Token> tokens) {
@@ -33,31 +34,50 @@ namespace Ion {
             NextToken();
         }
 
-        public AST_Block run() {
-            return ParseBlock(true);
+        void Eat(TokenType tokenType, string value) { // MAYBE: return the eaten token
+            if(Current.TokenType != tokenType) ErrorSystem.AddError_i(new ExpectedDifferentTokenError(tokenType, Current));
+            if(Current.Value != value) ErrorSystem.AddError_i(new ExpectedDifferentValueError(value, Current));
+            NextToken();
         }
 
-        // TODO: add error handling for EOF in block
-        private AST_Block ParseBlock(bool root = false) {
+        public Program run() {
+            ParseDeclaration();
+            return new Program(_functions, _variables);
+        }
+
+        private void ParseDeclaration() {
+            while(Current.TokenType != TokenType.EOF) {
+                Eat(TokenType.IDENTIFIER, "function");
+                string val = Current.Value;
+                Eat(TokenType.IDENTIFIER);
+                Eat(TokenType.LPAREN);
+                Eat(TokenType.RPAREN);
+                AST body = ParseBlock();
+                _functions.Add(val, new Function(val, body));
+            }
+        }
+
+        private AST ParseBlock() {
             List<AST> statements = new List<AST>();
-            bool useBraces = false;
+
+            bool isMultiline = false;
             if(Current.TokenType == TokenType.LBRACE) {
                 NextToken(); // Eat: LBRACE
-                useBraces = true;
+                isMultiline = true;
             }
-            if(root || useBraces) {
-                while(Current.TokenType != TokenType.EOF && (!useBraces || Current.TokenType != TokenType.RBRACE)) {
+
+            if(isMultiline) {
+                while(Current.TokenType != TokenType.EOF && (!isMultiline || Current.TokenType != TokenType.RBRACE)) {
                     AST ast = ParseStatement();
                     if(ast == null) continue;
                     statements.Add(ast);
                 }
-            } else {
-                AST ast = ParseStatement();
-                if(ast != null) statements.Add(ast);
-            }
-            if(useBraces) {
+
+                if(Current.TokenType == TokenType.EOF) ErrorSystem.AddError_i(new MissingCharacterError('}', Current.Position));
+
                 Eat(TokenType.RBRACE);
-            }
+            } else return ParseStatement();
+
             return new AST_Block(statements);
         }
 
@@ -66,6 +86,9 @@ namespace Ion {
                 NextToken(); // Eat: SEMICOLON
                 return null;
             }
+
+            if(Current.TokenType == TokenType.LBRACE) return ParseBlock();
+
             if(Current.TokenType == TokenType.KEYWORD) {
                 switch(Current.Value) {
                     case "if": {
@@ -73,8 +96,8 @@ namespace Ion {
                         Eat(TokenType.LPAREN);
                         AST_Expression condition = ParseExpression();
                         Eat(TokenType.RPAREN);
-                        AST_Block ifBlock = ParseBlock();
-                        AST_Block elseBlock = null;
+                        AST ifBlock = ParseBlock();
+                        AST elseBlock = null;
                         if(Current.TokenType == TokenType.KEYWORD && Current.Value == "else") {
                             NextToken(); // Eat: IDENTIFIER "else"
                             elseBlock = ParseBlock();
@@ -83,6 +106,16 @@ namespace Ion {
                     }
                 }
             }
+
+            if(Current.TokenType == TokenType.IDENTIFIER && Current.Value == "putc") {
+                NextToken(); // Eat: IDENTIFIER "putc"
+                Eat(TokenType.LPAREN);
+                AST_Expression expr = ParseExpression();
+                Eat(TokenType.RPAREN);
+                Eat(TokenType.SEMICOLON);
+                return new AST_Put_c(expr);
+            }
+
             AST expression = ParseExpression();
             Eat(TokenType.SEMICOLON);
             return expression;
@@ -91,38 +124,40 @@ namespace Ion {
         private AST_Expression ParseExpression() {
             switch(Current.TokenType) {
                 case TokenType.IDENTIFIER: { // IDENTIFIER
-                        string value = Current.Value;
-                        switch(NextToken().TokenType) {
-                            case TokenType.IDENTIFIER: // IDENTIFIER IDENTIFIER
-                                string value2 = Current.Value;
+                    Token tok = Current;
+                    string val = Current.Value;
+                    switch(NextToken().TokenType) {
+                        case TokenType.IDENTIFIER: { // IDENTIFIER IDENTIFIER
+                            string val2 = Current.Value;
+                            NextToken();
+                            if(Current.TokenType == TokenType.ASSIGN) { // IDENTIFIER IDENTIFIER =
                                 NextToken();
-                                if(Current.TokenType == TokenType.ASSIGN) { // IDENTIFIER IDENTIFIER =
-                                    NextToken();
-                                    AST_Expression valueExpression = ParseExpression();
-                                    Variable variable = DeclareVariable(value2);
-                                    return new AST_Assignment(variable, valueExpression);
-                                } else {
-                                    DeclareVariable(value2);
-                                    return null;
-                                }
-                            case TokenType.ASSIGN: { // IDENTIFIER =
-                                    NextToken(); // Eat: ASSIGN
-                                    AST_Expression valueExpression = ParseExpression();
-                                    return new AST_Assignment(GetVariable(value), valueExpression);
-                                }
-                            default:
-                                Console.WriteLine("]] Unimplemented exception 1: " + Current);
-                                throw new NotImplementedException();
+                                AST_Expression valueExpression = ParseExpression();
+                                Variable variable = DeclareVariable(val2);
+                                return new AST_Assignment(variable, valueExpression);
+                            } else {
+                                DeclareVariable(val2);
+                                return null;
+                            }
                         }
+                        case TokenType.ASSIGN: { // IDENTIFIER =
+                            NextToken(); // Eat: ASSIGN
+                            AST_Expression valueExpression = ParseExpression();
+                            return new AST_Assignment(GetVariable(tok.Value, tok.Position), valueExpression);
+                        }
+                        case TokenType.LPAREN: {
+                            NextToken(); // Eat: LPAREN
+                            Eat(TokenType.RPAREN);
+                            if(!_functions.ContainsKey(val)) ErrorSystem.AddError_i(new UnknownFunctionError(tok));
+                            return new AST_FunctionCall(_functions[val]);
+                        }
+                        default: return new AST_Access(GetVariable(val, tok.Position));
                     }
-                case TokenType.INTEGER: { // INTEGER
-                        return NextTokenWith(new AST_Integer(Current.Value));
-                    }
-                case TokenType.FLOAT: { // FLOAT
-                        return NextTokenWith(new AST_Float(Current.Value));
-                    }
+                }
+                case TokenType.INTEGER: return NextTokenWith(new AST_Integer(Current.Value));
+                case TokenType.FLOAT: return NextTokenWith(new AST_Float(Current.Value));
                 default:
-                    Console.WriteLine("]] Unimplemented exception 2: " + Current);
+                    Console.WriteLine("]] Unimplemented exception 1: " + Current);
                     throw new NotImplementedException();
             }
         }
@@ -133,8 +168,8 @@ namespace Ion {
             return variable;
         }
 
-        private Variable GetVariable(string identifier) {
-            if(!_variables.ContainsKey(identifier)) throw new NotImplementedException();
+        private Variable GetVariable(string identifier, Position position) {
+            if(!_variables.ContainsKey(identifier)) ErrorSystem.AddError_i(new UnknownVariableError(identifier, position));
             return _variables[identifier];
         }
 

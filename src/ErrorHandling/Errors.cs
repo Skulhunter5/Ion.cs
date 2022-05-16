@@ -2,15 +2,15 @@ namespace Ion {
 
     abstract class Error {}
 
-    abstract class GeneralError : Error {
-        public override string ToString() {
-            return "[General] ERROR: ";
-        }
-    }
-
     abstract class LexerError : Error {
         public override string ToString() {
             return "[Lexer] ERROR: ";
+        }
+    }
+
+    abstract class ParserError : Error {
+        public override string ToString() {
+            return "[Parser] ERROR: ";
         }
     }
 
@@ -42,7 +42,7 @@ namespace Ion {
         }
     }
 
-    sealed class ExpectedDifferentTokenError : LexerError {
+    sealed class ExpectedDifferentTokenError : ParserError {
         public ExpectedDifferentTokenError(TokenType expected, Token got) {
             Expected = expected;
             Got = got;
@@ -53,6 +53,68 @@ namespace Ion {
 
         public override string ToString() {
             return base.ToString() + "Unexpected token " + Got + ", expected token of type " + Expected;
+        }
+    }
+
+    sealed class ExpectedDifferentValueError : ParserError {
+        public ExpectedDifferentValueError(string expected, Token got) {
+            Expected = expected;
+            Got = got;
+        }
+
+        public string Expected { get; }
+        public Token Got { get; }
+
+        public override string ToString() {
+            return base.ToString() + "Unexpected token " + Got + ", expected '" + Expected + "'";
+        }
+    }
+
+    sealed class MissingCharacterError : ParserError {
+        public MissingCharacterError(char c, Position position) {
+            C = c;
+            Position = position;
+        }
+
+        public char C { get; }
+        public Position Position { get; }
+
+        public override string ToString() {
+            return base.ToString() + "Missing character: '" + C + "' at " + Position;
+        }
+    }
+
+    sealed class MissingEntryPointError : ParserError {
+        public MissingEntryPointError() {}
+
+        public override string ToString() {
+            return base.ToString() + "Missing entry point: main";
+        }
+    }
+
+    sealed class UnknownFunctionError : ParserError {
+        public UnknownFunctionError(Token token) {
+            Token = token;
+        }
+
+        public Token Token { get; }
+
+        public override string ToString() {
+            return base.ToString() + "Unknown function: '" + Token.Value + "' at " + Token.Position;
+        }
+    }
+
+    sealed class UnknownVariableError : ParserError {
+        public UnknownVariableError(string identifier, Position position) {
+            Identifier = identifier;
+            Position = position;
+        }
+
+        public string Identifier { get; }
+        public Position Position { get; }
+
+        public override string ToString() {
+            return base.ToString() + "Unknown variable: '" + Identifier + "' at " + Position;
         }
     }
 

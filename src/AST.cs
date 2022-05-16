@@ -11,7 +11,10 @@ namespace Ion {
 
         // Expressions
         INTEGER, FLOAT,
-        ASSIGNMENT,
+        ASSIGNMENT, ACCESS,
+
+        // TEMPORARY
+        PUT_c,
     }
 
     abstract class AST {
@@ -38,6 +41,8 @@ namespace Ion {
         public AST_Expression(ASTType asttype) : base(asttype) { }
     }
 
+    // Block
+
     sealed class AST_Block : AST {
         public AST_Block(List<AST> statements) : base(ASTType.BLOCK) {
             Statements = statements;
@@ -60,26 +65,26 @@ namespace Ion {
     // Control statements
 
     sealed class AST_If : AST {        
-        public AST_If(AST_Expression condition, AST_Block ifBlock, AST_Block elseBlock) : base(ASTType.IF) {
+        public AST_If(AST_Expression condition, AST ifBlock, AST elseBlock) : base(ASTType.IF) {
             Condition = condition;
             IfBlock = ifBlock;
             ElseBlock = elseBlock;
         }
 
         public AST_Expression Condition { get; }
-        public AST_Block IfBlock { get; }
-        public AST_Block ElseBlock { get; }
+        public AST IfBlock { get; }
+        public AST ElseBlock { get; }
 
         public override string GenerateAssembly() {
             string asm = "";
             asm += Condition.GenerateAssembly();
-            asm += "cmp rax, 0";
-            asm += "je if_" + Id + "_else";
+            asm += "    cmp rax, 0\n";
+            asm += "    je if_" + Id + "_else\n";
             asm += IfBlock.GenerateAssembly();
-            asm += "jmp if_" + Id + "_end";
-            asm += "if_" + Id + "_else:";
+            asm += "    jmp if_" + Id + "_end\n";
+            asm += "    if_" + Id + "_else:\n";
             asm += ElseBlock.GenerateAssembly();
-            asm += "if_" + Id + "_end:";
+            asm += "    if_" + Id + "_end:\n";
             return asm;
         }
 
@@ -100,11 +105,30 @@ namespace Ion {
         public AST_Expression Value { get; }
 
         public override string GenerateAssembly() {
-            throw new NotImplementedException();
+            string asm = "";
+            asm += Value.GenerateAssembly();
+            asm += "mov [var_" + Variable.Id + "], rax\n";
+            return asm;
         }
 
         public override string ToString() {
             return base.ToString() + ",variable=" + Variable + ",value=" + Value + ")";
+        }
+    }
+
+    sealed class AST_Access : AST_Expression {
+        public AST_Access(Variable variable) : base(ASTType.ACCESS) {
+            Variable = variable;
+        }
+
+        public Variable Variable { get; }
+
+        public override string GenerateAssembly() {
+            return "    mov rax, [var_" + Variable.Id + "]\n";
+        }
+
+        public override string ToString() {
+            return base.ToString() + ",variable=" + Variable + ")";
         }
     }
 
@@ -116,7 +140,7 @@ namespace Ion {
         public string Value { get; }
 
         public override string GenerateAssembly() {
-            return "mov rax, " + Value;
+            return "    mov rax, " + Value + "\n";
         }
 
         public override string ToString() {
@@ -137,6 +161,48 @@ namespace Ion {
 
         public override string ToString() {
             return base.ToString() + ",value=" + Value + ")";
+        }
+    }
+
+    sealed class AST_Put_c : AST { // TEMPORARY
+        public AST_Put_c(AST_Expression expression) : base(ASTType.PUT_c) {
+            Expression = expression;
+        }
+
+        public AST_Expression Expression { get; }
+
+        public override string GenerateAssembly() {
+            string asm = "";
+            asm += Expression.GenerateAssembly();
+            asm += "    mov [cbuf], al\n";
+            asm += "    mov rax, 1\n";
+            asm += "    mov rdi, 1\n";
+            asm += "    mov rsi, cbuf\n";
+            asm += "    mov rdx, 1\n";
+            asm += "    syscall\n";
+            return asm;
+        }
+
+        public override string ToString() {
+            return base.ToString() + ",expression=" + Expression  + ")";
+        }
+    }
+
+    sealed class AST_FunctionCall : AST_Expression { // TEMPORARY
+        public AST_FunctionCall(Function function) : base(ASTType.PUT_c) {
+            Function = function;
+        }
+
+        public Function Function { get; }
+
+        public override string GenerateAssembly() {
+            string asm = "";
+            asm += "    call function_" + Function.Id + "\n";
+            return asm;
+        }
+
+        public override string ToString() {
+            return base.ToString() + ",identifier=" + Function.Identifier  + ")";
         }
     }
 

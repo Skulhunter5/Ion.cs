@@ -47,7 +47,7 @@ namespace Ion {
 
         private void ParseDeclaration() {
             while(Current.TokenType != TokenType.EOF) {
-                Eat(TokenType.IDENTIFIER, "function");
+                Eat(TokenType.KEYWORD, "function");
                 string val = Current.Value;
                 Eat(TokenType.IDENTIFIER);
                 Eat(TokenType.LPAREN);
@@ -122,6 +122,51 @@ namespace Ion {
         }
 
         private AST_Expression ParseExpression() {
+            List<AST_Expression> particles = new List<AST_Expression>();
+            List<TokenType> operators = new List<TokenType>();
+
+            particles.Add(ParseExpressionParticle());
+            while(Utils.IsOperator(Current.TokenType)) {
+                operators.Add(Current.TokenType);
+                NextToken(); // Eat: [mathematical operator]
+                particles.Add(ParseExpressionParticle());
+            }
+
+            // TODO: connect the particles with the operators
+            Reduce(particles, operators, 0, 0);
+
+            return particles[0];
+        }
+
+        private void Reduce(List<AST_Expression> particles, List<TokenType> operators, int start, int level) {
+            if(operators.Count == 0) return;
+            if(level == 0) level = Utils.GetOperationLevel(operators[0]);
+            while(particles.Count > start + 1) {
+                if(Utils.GetOperationLevel(operators[start]) < level) level = Utils.GetOperationLevel(operators[0]);
+                if(operators.Count > start + 1 && Utils.GetOperationLevel(operators[start + 1]) > level) {
+                    Reduce(particles, operators, start + 1, Utils.GetOperationLevel(operators[start + 1]));
+                    continue;
+                }
+                particles[start] = new AST_Calculation(operators[start], particles[start], particles[start + 1]);
+                particles.RemoveAt(start + 1);
+                operators.RemoveAt(start);
+            }
+        }
+
+        private AST_Expression ParseExpressionParticle() {
+            if(Current.TokenType == TokenType.MINUS) {
+                TokenType _operator = Current.TokenType;
+                NextToken(); // Eat: [unary operator]
+                return new AST_Unary(_operator, ParseExpressionParticle());
+            }
+
+            if(Current.TokenType == TokenType.LPAREN) {
+                NextToken(); // Eat: LPAREN
+                AST_Expression expression = ParseExpression();
+                Eat(TokenType.RPAREN);
+                return expression;
+            }
+
             switch(Current.TokenType) {
                 case TokenType.IDENTIFIER: { // IDENTIFIER
                     Token tok = Current;

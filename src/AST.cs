@@ -13,6 +13,8 @@ namespace Ion {
         INTEGER, FLOAT,
         ASSIGNMENT, ACCESS,
 
+        UNARY, CALCULATION,
+
         // TEMPORARY
         PUT_c,
     }
@@ -64,7 +66,7 @@ namespace Ion {
 
     // Control statements
 
-    sealed class AST_If : AST {        
+    sealed class AST_If : AST {
         public AST_If(AST_Expression condition, AST ifBlock, AST elseBlock) : base(ASTType.IF) {
             Condition = condition;
             IfBlock = ifBlock;
@@ -184,11 +186,11 @@ namespace Ion {
         }
 
         public override string ToString() {
-            return base.ToString() + ",expression=" + Expression  + ")";
+            return base.ToString() + ",expression=" + Expression + ")";
         }
     }
 
-    sealed class AST_FunctionCall : AST_Expression { // TEMPORARY
+    sealed class AST_FunctionCall : AST_Expression {
         public AST_FunctionCall(Function function) : base(ASTType.PUT_c) {
             Function = function;
         }
@@ -202,7 +204,59 @@ namespace Ion {
         }
 
         public override string ToString() {
-            return base.ToString() + ",identifier=" + Function.Identifier  + ")";
+            return base.ToString() + ",identifier=" + Function.Identifier + ")";
+        }
+    }
+
+    sealed class AST_Unary : AST_Expression {
+        public AST_Unary(TokenType _operator, AST_Expression expression) : base(ASTType.UNARY) {
+            Operator = _operator;
+            Expression = expression;
+        }
+
+        public TokenType Operator { get; }
+        public AST_Expression Expression { get; }
+
+        public override string GenerateAssembly() {
+            string asm = "";
+            asm += Expression.GenerateAssembly();
+            if(Operator == TokenType.MINUS) asm += "    neg rax\n";
+            return asm;
+        }
+
+        public override string ToString() {
+            return base.ToString() + ",expression=" + Expression + ",operator=" + Operator + ")";
+        }
+    }
+
+    sealed class AST_Calculation : AST_Expression {
+        public AST_Calculation(TokenType _operator, AST_Expression a, AST_Expression b) : base(ASTType.CALCULATION) {
+            Operator = _operator;
+            A = a;
+            B = b;
+        }
+
+        public TokenType Operator { get; }
+        public AST_Expression A { get; }
+        public AST_Expression B { get; }
+
+        public override string GenerateAssembly() {
+            string asm = "";
+            asm += A.GenerateAssembly();
+            asm += "    mov r15, rax\n";
+            asm += B.GenerateAssembly();
+            if(Operator == TokenType.PLUS) asm += "    add rax, r15\n";
+            else if(Operator == TokenType.MINUS) {
+                asm += "    sub r15, rax\n";
+                asm += "    mov rax, r15\n";
+            } else if(Operator == TokenType.STAR) asm += "    imul rax, r15\n";
+            else if(Operator == TokenType.SLASH) throw new NotImplementedException();
+            else throw new NotImplementedException();
+            return asm;
+        }
+
+        public override string ToString() {
+            return base.ToString() + ",operator=" + Operator + ",a=" + A + ",b=" + B + ")";
         }
     }
 

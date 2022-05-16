@@ -25,7 +25,7 @@ namespace Ion {
             for(int i = 0; i < text.Length; i++) if(text[i] == '\n') n++;
             return n;
         }
-        
+
     }
 
 }

@@ -1,6 +1,6 @@
 namespace Ion {
 
-    abstract class Error {}
+    abstract class Error { }
 
     abstract class LexerError : Error {
         public override string ToString() {
@@ -26,7 +26,7 @@ namespace Ion {
         public char C { get; }
 
         public override string ToString() {
-            return base.ToString() + "Invalid character: '" + C + "' (" + ((int) C) + ") at " + Position;
+            return base.ToString() + "Invalid character: '" + C + "' (" + ((int)C) + ") at " + Position;
         }
     }
 
@@ -85,7 +85,7 @@ namespace Ion {
     }
 
     sealed class MissingEntryPointError : ParserError {
-        public MissingEntryPointError() {}
+        public MissingEntryPointError() { }
 
         public override string ToString() {
             return base.ToString() + "Missing entry point: main";

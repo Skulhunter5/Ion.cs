@@ -1,20 +1,28 @@
 namespace Ion {
 
     enum TokenType {
+        // EOF
         EOF,
-
+        // SEMICOLON
         SEMICOLON,
-
+        // valued TokenTypes
         KEYWORD,
         IDENTIFIER,
         INTEGER, FLOAT,
-
+        // parenthesis
         LPAREN, RPAREN,
         LBRACE, RBRACE,
         LBRACK, RBRACK,
-
+        // general operators
+        STAR,
+        // mathematical operators
+        PLUS, MINUS, SLASH,
+        // logical operators
+        NOT,
+        // comparisons
         EQ, LT, GT, LTEQ, GTEQ, NEQ,
-        ASSIGN, NOT,
+        // assignment operators
+        ASSIGN, PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ,
     }
 
     class Token {

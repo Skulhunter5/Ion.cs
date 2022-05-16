@@ -64,6 +64,7 @@ namespace Ion {
         private static readonly HashSet<string> keywords = new HashSet<string>() {
             "if",
             "else",
+            "function", // TEMPORARY
         };
 
         private Token ParseIdentifier() {
@@ -73,10 +74,22 @@ namespace Ion {
                 identifier += c;
                 Advance();
             }
-            
+
             if(keywords.Contains(identifier)) return new Token(TokenType.KEYWORD, position, identifier);
             return new Token(TokenType.IDENTIFIER, position, identifier);
         }
+
+        private static readonly Dictionary<char, TokenType> singleCharTokens = new Dictionary<char, TokenType>() {
+            // SEMICOLON
+            {';', TokenType.SEMICOLON},
+            // parenthesis
+            {'(', TokenType.LPAREN},
+            {')', TokenType.RPAREN},
+            {'{', TokenType.LBRACE},
+            {'}', TokenType.RBRACE},
+            {'[', TokenType.LBRACK},
+            {']', TokenType.RBRACK},
+        };
 
         public Token NextToken() {
             SkipWhiteSpace();
@@ -88,21 +101,25 @@ namespace Ion {
 
             Position position = new Position(_file, _line, _column);
 
+            if(singleCharTokens.ContainsKey(c)) return AdvanceWith(new Token(singleCharTokens[c], position));
+
             switch(c) {
-                case '(':
-                    return AdvanceWith(new Token(TokenType.LPAREN, position));
-                case ')':
-                    return AdvanceWith(new Token(TokenType.RPAREN, position));
-                case '{':
-                    return AdvanceWith(new Token(TokenType.LBRACE, position));
-                case '}':
-                    return AdvanceWith(new Token(TokenType.RBRACE, position));
-                case '[':
-                    return AdvanceWith(new Token(TokenType.LBRACK, position));
-                case ']':
-                    return AdvanceWith(new Token(TokenType.RBRACK, position));
-                case ';':
-                    return AdvanceWith(new Token(TokenType.SEMICOLON, position));
+                case '+':
+                    Advance();
+                    if(c == '=') return AdvanceWith(new Token(TokenType.PLUS_EQ, position));
+                    return new Token(TokenType.PLUS, position);
+                case '-':
+                    Advance();
+                    if(c == '=') return AdvanceWith(new Token(TokenType.MINUS_EQ, position));
+                    return new Token(TokenType.MINUS, position);
+                case '*':
+                    Advance();
+                    if(c == '=') return AdvanceWith(new Token(TokenType.STAR_EQ, position));
+                    return new Token(TokenType.STAR, position);
+                case '/':
+                    Advance();
+                    if(c == '=') return AdvanceWith(new Token(TokenType.SLASH_EQ, position));
+                    return new Token(TokenType.SLASH, position);
                 case '=':
                     Advance();
                     if(c == '=') return AdvanceWith(new Token(TokenType.EQ, position));

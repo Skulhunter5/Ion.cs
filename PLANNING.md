@@ -4,3 +4,4 @@
 
 # TODO
 - create an actual concept for the presence of a main function
+- add modulo operator

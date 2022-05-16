@@ -26,7 +26,7 @@ namespace Ion {
             asm += "global _start\n";
             asm += "_start:\n";
             asm += "    call function_" + Functions["main"].Id + "\n";
-            
+
             asm += "exit:\n";
             asm += "    mov rax, 60\n";
             asm += "    mov rdi, 0\n";

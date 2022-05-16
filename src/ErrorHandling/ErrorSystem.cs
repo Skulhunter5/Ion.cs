@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 
 namespace Ion {
-    
+
     class ErrorSystem {
 
         private static bool terminateAfterStep = false;

@@ -3,5 +3,6 @@
 - Add underscores in numbers for readability
 
 # TODO
+- check for redeclaration of variables and functions
 - create an actual concept for the presence of a main function
 - add modulo operator

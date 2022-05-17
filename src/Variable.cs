@@ -6,6 +6,8 @@ namespace Ion {
         private static int NextId() { return nextId++; }
 
         public Variable(string identifier) {
+            Id = NextId();
+
             Identifier = identifier;
         }
 
@@ -13,7 +15,7 @@ namespace Ion {
         public string Identifier { get; }
 
         public string GenerateAssembly() {
-            return "var_" + Id + ": resq 1\n";
+            return "    var_" + Id + ": resq 1\n";
         }
 
         public override string ToString() {

@@ -3,6 +3,7 @@
 - Add underscores in numbers for readability
 
 # TODO
+- optimize assembly generation by compacting string assembly
 - add negative numbers
 - check for redeclaration of variables and functions
 - change the switch-statement to a normal switch-statement as in C++, Java, C#, ...

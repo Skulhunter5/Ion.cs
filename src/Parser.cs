@@ -177,7 +177,6 @@ namespace Ion {
                 particles.Add(ParseExpressionParticle());
             }
 
-            // TODO: connect the particles with the operators
             Reduce(particles, operators, 0, 0);
 
             return particles[0];

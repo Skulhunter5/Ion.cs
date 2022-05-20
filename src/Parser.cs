@@ -17,27 +17,27 @@ namespace Ion {
             Current = _tokens[_position];
         }
 
-        Token NextToken() {
+        Token Eat() {
             _position++;
             if(_position >= _tokens.Count) return _tokens[_tokens.Count - 1];
             Current = _tokens[_position];
             return Current;
         }
 
-        AST_Expression NextTokenWith(AST_Expression ast) {
-            NextToken();
+        AST_Expression EatWith(AST_Expression ast) {
+            Eat();
             return ast;
         }
 
         void Eat(TokenType tokenType) { // MAYBE: return the eaten token
             if(Current.TokenType != tokenType) ErrorSystem.AddError_i(new ExpectedDifferentTokenError(tokenType, Current));
-            NextToken();
+            Eat();
         }
 
         void Eat(TokenType tokenType, string value) { // MAYBE: return the eaten token
             if(Current.TokenType != tokenType) ErrorSystem.AddError_i(new ExpectedDifferentTokenError(tokenType, Current));
             if(Current.Value != value) ErrorSystem.AddError_i(new ExpectedDifferentValueError(value, Current));
-            NextToken();
+            Eat();
         }
 
         public Program run() {
@@ -62,7 +62,7 @@ namespace Ion {
 
             bool isMultiline = false;
             if(Current.TokenType == TokenType.LBRACE) {
-                NextToken(); // Eat: LBRACE
+                Eat(); // LBRACE
                 isMultiline = true;
             }
 
@@ -83,7 +83,7 @@ namespace Ion {
 
         private AST ParseStatement() {
             if(Current.TokenType == TokenType.SEMICOLON) {
-                NextToken(); // Eat: SEMICOLON
+                Eat(); // SEMICOLON
                 return null;
             }
 
@@ -92,20 +92,20 @@ namespace Ion {
             if(Current.TokenType == TokenType.KEYWORD) {
                 switch(Current.Value) {
                     case "if": {
-                        NextToken(); // Eat: KEYWORD "if"
+                        Eat(); // KEYWORD "if"
                         Eat(TokenType.LPAREN);
                         AST_Expression condition = ParseExpression();
                         Eat(TokenType.RPAREN);
                         AST ifBlock = ParseBlock();
                         AST elseBlock = null;
                         if(Current.TokenType == TokenType.KEYWORD && Current.Value == "else") {
-                            NextToken(); // Eat: IDENTIFIER "else"
+                            Eat(); // IDENTIFIER "else"
                             elseBlock = ParseBlock();
                         }
                         return new AST_If(condition, ifBlock, elseBlock);
                     }
                     case "while": {
-                        NextToken(); // Eat: KEYWORD "while"
+                        Eat(); // KEYWORD "while"
                         Eat(TokenType.LPAREN);
                         AST_Expression condition = ParseExpression();
                         Eat(TokenType.RPAREN);
@@ -113,7 +113,7 @@ namespace Ion {
                         return new AST_While(condition, whileBlock);
                     }
                     case "do": {
-                        NextToken(); // Eat: KEYWORD "do"
+                        Eat(); // KEYWORD "do"
                         AST doWhileBlock = ParseBlock();
                         Eat(TokenType.KEYWORD, "while");
                         Eat(TokenType.LPAREN);
@@ -127,7 +127,7 @@ namespace Ion {
                         List<AST> caseBlocks = new List<AST>();
                         AST defaultBlock = null;
 
-                        NextToken(); // Eat: KEYWORD switch
+                        Eat(); // KEYWORD switch
 
                         Eat(TokenType.LPAREN);
                         AST_Expression switchedExpression = ParseExpression();
@@ -136,12 +136,12 @@ namespace Ion {
                         Eat(TokenType.LBRACE);
                         while(Current.TokenType == TokenType.KEYWORD) {
                             if(Current.Value == "case") {
-                                NextToken(); // Eat: KEYWORD "case"
+                                Eat(); // KEYWORD "case"
                                 caseExpressions.Add(ParseExpression());
                                 Eat(TokenType.COLON);
                                 caseBlocks.Add(ParseBlock());
                             } else if(Current.Value == "default") {
-                                NextToken(); // Eat: KEYWORD "default"
+                                Eat(); // KEYWORD "default"
                                 Eat(TokenType.COLON);
                                 defaultBlock = ParseBlock();
                             } else ErrorSystem.AddError_i(new UnexpectedTokenError(Current, "'case' or 'default'"));
@@ -153,7 +153,7 @@ namespace Ion {
             }
 
             if(Current.TokenType == TokenType.IDENTIFIER && Current.Value == "putc") {
-                NextToken(); // Eat: IDENTIFIER "putc"
+                Eat(); // IDENTIFIER "putc"
                 Eat(TokenType.LPAREN);
                 AST_Expression expr = ParseExpression();
                 Eat(TokenType.RPAREN);
@@ -173,7 +173,7 @@ namespace Ion {
             particles.Add(ParseExpressionParticle());
             while(Utils.IsOperator(Current.TokenType)) {
                 operators.Add(Current.TokenType);
-                NextToken(); // Eat: [mathematical operator]
+                Eat(); // [operator]
                 particles.Add(ParseExpressionParticle());
             }
 
@@ -201,25 +201,25 @@ namespace Ion {
         private AST_Expression ParseExpressionParticle() {
             if(Current.TokenType == TokenType.MINUS) {
                 TokenType _operator = Current.TokenType;
-                NextToken(); // Eat: [unary operator]
+                Eat(); // [unary operator]
                 return new AST_Unary(_operator, ParseExpressionParticle());
             }
 
             if(Current.TokenType == TokenType.LPAREN) {
-                NextToken(); // Eat: LPAREN
+                Eat(); // LPAREN
                 AST_Expression expression = ParseExpression();
                 Eat(TokenType.RPAREN);
                 return expression;
             }
 
             if(Current.TokenType == TokenType.KEYWORD && Current.Value == "var") { // TEMPORARY
-                NextToken(); // Eat: KEYWORD "var"
+                Eat(); // KEYWORD "var"
                 string varName = Current.Value;
                 Eat(TokenType.IDENTIFIER);
                 AST_Assignment assignment = null;
                 Variable variable = DeclareVariable(varName);
-                if(Current.TokenType == TokenType.ASSIGN) { // IDENTIFIER IDENTIFIER =
-                    NextToken(); // Eat: ASSIGN
+                if(Current.TokenType == TokenType.ASSIGN) {
+                    Eat(); // ASSIGN
                     AST_Expression valueExpression = ParseExpression();
                     assignment = new AST_Assignment(variable, valueExpression);
                 }
@@ -227,36 +227,36 @@ namespace Ion {
             }
 
             switch(Current.TokenType) {
-                case TokenType.IDENTIFIER: { // IDENTIFIER
+                case TokenType.IDENTIFIER: {
                     Token tok = Current;
                     string val = Current.Value;
-                    switch(NextToken().TokenType) {
-                        case TokenType.ASSIGN: { // IDENTIFIER =
-                            NextToken(); // Eat: ASSIGN
+                    switch(Eat().TokenType) {
+                        case TokenType.ASSIGN: {
+                            Eat(); // ASSIGN
                             AST_Expression valueExpression = ParseExpression();
                             return new AST_Assignment(GetVariable(tok.Value, tok.Position), valueExpression);
                         }
                         case TokenType.LPAREN: {
-                            NextToken(); // Eat: LPAREN
+                            Eat(); // LPAREN
                             Eat(TokenType.RPAREN);
                             if(!_functions.ContainsKey(val)) ErrorSystem.AddError_i(new UnknownFunctionError(tok));
                             return new AST_FunctionCall(_functions[val]);
                         }
-                        case TokenType.INCREMENT: return NextTokenWith(new AST_Increment(GetVariable(tok.Value, tok.Position), IncDecType.AFTER));// Eat: INCREMENT
-                        case TokenType.DECREMENT: return NextTokenWith(new AST_Decrement(GetVariable(tok.Value, tok.Position), IncDecType.AFTER));// Eat: INCREMENT
+                        case TokenType.INCREMENT: return EatWith(new AST_Increment(GetVariable(tok.Value, tok.Position), IncDecType.AFTER)); // Eat: INCREMENT
+                        case TokenType.DECREMENT: return EatWith(new AST_Decrement(GetVariable(tok.Value, tok.Position), IncDecType.AFTER)); // Eat: INCREMENT
                         default: return new AST_Access(GetVariable(val, tok.Position));
                     }
                 }
-                case TokenType.INTEGER: return NextTokenWith(new AST_Integer(Current.Value));
-                case TokenType.FLOAT: return NextTokenWith(new AST_Float(Current.Value));
+                case TokenType.INTEGER: return EatWith(new AST_Integer(Current.Value));
+                case TokenType.FLOAT: return EatWith(new AST_Float(Current.Value));
                 case TokenType.INCREMENT: {
-                    NextToken(); // Eat: INCREMENT
+                    Eat(); // INCREMENT
                     Token tok = Current;
                     Eat(TokenType.IDENTIFIER);
                     return new AST_Increment(GetVariable(tok.Value, tok.Position), IncDecType.BEFORE);
                 }
                 case TokenType.DECREMENT: {
-                    NextToken(); // Eat: INCREMENT
+                    Eat(); // INCREMENT
                     Token tok = Current;
                     Eat(TokenType.IDENTIFIER);
                     return new AST_Decrement(GetVariable(tok.Value, tok.Position), IncDecType.BEFORE);

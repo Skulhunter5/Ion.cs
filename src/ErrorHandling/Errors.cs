@@ -118,4 +118,18 @@ namespace Ion {
         }
     }
 
+    sealed class UnexpectedTokenError : ParserError {
+        public UnexpectedTokenError(Token got, string expected) {
+            Got = got;
+            Expected = expected;
+        }
+
+        public Token Got { get; }
+        public string Expected { get; }
+
+        public override string ToString() {
+            return base.ToString() + "Unexpected token: " + Got + ", expected: " + Expected;
+        }
+    }
+
 }

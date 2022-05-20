@@ -62,8 +62,17 @@ namespace Ion {
         }
 
         private static readonly HashSet<string> keywords = new HashSet<string>() {
+            // IF
             "if",
             "else",
+            // WHILE / DO_WHILE
+            "while",
+            "do",
+            // SWITCH
+            "switch",
+            "case",
+            "default",
+            
             "function", // TEMPORARY
         };
 
@@ -82,6 +91,8 @@ namespace Ion {
         private static readonly Dictionary<char, TokenType> singleCharTokens = new Dictionary<char, TokenType>() {
             // SEMICOLON
             {';', TokenType.SEMICOLON},
+            // COLON
+            {':', TokenType.COLON},
             // parenthesis
             {'(', TokenType.LPAREN},
             {')', TokenType.RPAREN},
@@ -107,10 +118,12 @@ namespace Ion {
                 case '+':
                     Advance();
                     if(c == '=') return AdvanceWith(new Token(TokenType.PLUS_EQ, position));
+                    if(c == '+') return AdvanceWith(new Token(TokenType.INCREMENT, position));
                     return new Token(TokenType.PLUS, position);
                 case '-':
                     Advance();
                     if(c == '=') return AdvanceWith(new Token(TokenType.MINUS_EQ, position));
+                    if(c == '-') return AdvanceWith(new Token(TokenType.DECREMENT, position));
                     return new Token(TokenType.MINUS, position);
                 case '*':
                     Advance();

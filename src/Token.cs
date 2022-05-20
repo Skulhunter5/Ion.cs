@@ -5,6 +5,8 @@ namespace Ion {
         EOF,
         // SEMICOLON
         SEMICOLON,
+        // COLON,
+        COLON,
         // valued TokenTypes
         KEYWORD,
         IDENTIFIER,
@@ -16,11 +18,12 @@ namespace Ion {
         // general operators
         STAR,
         // mathematical operators
+        INCREMENT, DECREMENT,
         PLUS, MINUS, SLASH,
         // logical operators
         NOT,
         // comparisons
-        EQ, LT, GT, LTEQ, GTEQ, NEQ,
+        EQ, NEQ, LT, GT, LTEQ, GTEQ,
         // assignment operators
         ASSIGN, PLUS_EQ, MINUS_EQ, STAR_EQ, SLASH_EQ,
     }

@@ -92,7 +92,7 @@ namespace Ion {
             if(Current.TokenType == TokenType.KEYWORD) {
                 switch(Current.Value) {
                     case "if": {
-                        NextToken(); // Eat: IDENTIFIER "if"
+                        NextToken(); // Eat: KEYWORD "if"
                         Eat(TokenType.LPAREN);
                         AST_Expression condition = ParseExpression();
                         Eat(TokenType.RPAREN);
@@ -103,6 +103,51 @@ namespace Ion {
                             elseBlock = ParseBlock();
                         }
                         return new AST_If(condition, ifBlock, elseBlock);
+                    }
+                    case "while": {
+                        NextToken(); // Eat: KEYWORD "while"
+                        Eat(TokenType.LPAREN);
+                        AST_Expression condition = ParseExpression();
+                        Eat(TokenType.RPAREN);
+                        AST whileBlock = ParseBlock();
+                        return new AST_While(condition, whileBlock);
+                    }
+                    case "do": {
+                        NextToken(); // Eat: KEYWORD "do"
+                        AST doWhileBlock = ParseBlock();
+                        Eat(TokenType.KEYWORD, "while");
+                        Eat(TokenType.LPAREN);
+                        AST_Expression condition = ParseExpression();
+                        Eat(TokenType.RPAREN);
+                        Eat(TokenType.SEMICOLON);
+                        return new AST_DoWhile(condition, doWhileBlock);
+                    }
+                    case "switch": {
+                        List<AST_Expression> caseExpressions = new List<AST_Expression>();
+                        List<AST> caseBlocks = new List<AST>();
+                        AST defaultBlock = null;
+
+                        NextToken(); // Eat: KEYWORD switch
+
+                        Eat(TokenType.LPAREN);
+                        AST_Expression switchedExpression = ParseExpression();
+                        Eat(TokenType.RPAREN);
+
+                        Eat(TokenType.LBRACE);
+                        while(Current.TokenType == TokenType.KEYWORD) {
+                            if(Current.Value == "case") {
+                                NextToken(); // Eat: KEYWORD "case"
+                                caseExpressions.Add(ParseExpression());
+                                Eat(TokenType.COLON);
+                                caseBlocks.Add(ParseBlock());
+                            } else if(Current.Value == "default") {
+                                NextToken(); // Eat: KEYWORD "default"
+                                Eat(TokenType.COLON);
+                                defaultBlock = ParseBlock();
+                            } else ErrorSystem.AddError_i(new UnexpectedTokenError(Current, "'case' or 'default'"));
+                        }
+                        Eat(TokenType.RBRACE);
+                        return new AST_Switch(switchedExpression, caseExpressions, caseBlocks, defaultBlock);
                     }
                 }
             }
@@ -147,7 +192,7 @@ namespace Ion {
                     Reduce(particles, operators, start + 1, Utils.GetOperationLevel(operators[start + 1]));
                     continue;
                 }
-                particles[start] = new AST_Calculation(operators[start], particles[start], particles[start + 1]);
+                particles[start] = new AST_Conjunction(operators[start], particles[start], particles[start + 1]);
                 particles.RemoveAt(start + 1);
                 operators.RemoveAt(start);
             }
@@ -196,11 +241,25 @@ namespace Ion {
                             if(!_functions.ContainsKey(val)) ErrorSystem.AddError_i(new UnknownFunctionError(tok));
                             return new AST_FunctionCall(_functions[val]);
                         }
+                        case TokenType.INCREMENT: return NextTokenWith(new AST_Increment(GetVariable(tok.Value, tok.Position), IncDecType.AFTER));// Eat: INCREMENT
+                        case TokenType.DECREMENT: return NextTokenWith(new AST_Decrement(GetVariable(tok.Value, tok.Position), IncDecType.AFTER));// Eat: INCREMENT
                         default: return new AST_Access(GetVariable(val, tok.Position));
                     }
                 }
                 case TokenType.INTEGER: return NextTokenWith(new AST_Integer(Current.Value));
                 case TokenType.FLOAT: return NextTokenWith(new AST_Float(Current.Value));
+                case TokenType.INCREMENT: {
+                    NextToken(); // Eat: INCREMENT
+                    Token tok = Current;
+                    Eat(TokenType.IDENTIFIER);
+                    return new AST_Increment(GetVariable(tok.Value, tok.Position), IncDecType.BEFORE);
+                }
+                case TokenType.DECREMENT: {
+                    NextToken(); // Eat: INCREMENT
+                    Token tok = Current;
+                    Eat(TokenType.IDENTIFIER);
+                    return new AST_Decrement(GetVariable(tok.Value, tok.Position), IncDecType.BEFORE);
+                }
                 default:
                     Console.WriteLine("]] Unimplemented exception 1: " + Current);
                     throw new NotImplementedException();

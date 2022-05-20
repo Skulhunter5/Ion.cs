@@ -8,12 +8,18 @@ namespace Ion {
 
         // Control statements
         IF,
+        WHILE, DO_WHILE,
+        SWITCH,
 
         // Expressions
         INTEGER, FLOAT,
         ASSIGNMENT, ACCESS,
 
-        UNARY, CALCULATION,
+        INCREMENT, DECREMENT,
+
+        UNARY,
+
+        CONJUNCTION,
 
         // TEMPORARY
         PUT_c,
@@ -35,7 +41,7 @@ namespace Ion {
         public abstract string GenerateAssembly();
 
         public override string ToString() {
-            return "AST(" + ASTType;
+            return "AST(" + this.ASTType;
         }
     }
 
@@ -55,12 +61,12 @@ namespace Ion {
         public override string GenerateAssembly() {
             string asm = "";
             // TODO: check foreach vs for performance
-            foreach(AST statement in Statements) asm += statement.GenerateAssembly();
+            foreach(AST statement in this.Statements) asm += statement.GenerateAssembly();
             return asm;
         }
 
         public override string ToString() {
-            return base.ToString() + ",children=[" + String.Join(",", Statements) + "])";
+            return base.ToString() + ",children=[" + String.Join(",", this.Statements) + "])";
         }
     }
 
@@ -79,19 +85,110 @@ namespace Ion {
 
         public override string GenerateAssembly() {
             string asm = "";
-            asm += Condition.GenerateAssembly();
+            asm += this.Condition.GenerateAssembly();
             asm += "    cmp rax, 0\n";
             asm += "    je if_" + Id + "_else\n";
-            asm += IfBlock.GenerateAssembly();
+            asm += this.IfBlock.GenerateAssembly();
             asm += "    jmp if_" + Id + "_end\n";
             asm += "    if_" + Id + "_else:\n";
-            asm += ElseBlock.GenerateAssembly();
+            asm += this.ElseBlock.GenerateAssembly();
             asm += "    if_" + Id + "_end:\n";
             return asm;
         }
 
         public override string ToString() {
-            return base.ToString() + ",condition=" + Condition + ",ifBlock=" + IfBlock + (ElseBlock != null ? ",elseBlock=" + ElseBlock : "") + ")";
+            return base.ToString() + ",condition=" + this.Condition + ",ifBlock=" + this.IfBlock + (this.ElseBlock != null ? ",elseBlock=" + this.ElseBlock : "") + ")";
+        }
+    }
+
+    sealed class AST_While : AST {
+        public AST_While(AST_Expression condition, AST whileBlock) : base(ASTType.WHILE) {
+            Condition = condition;
+            WhileBlock = whileBlock;
+        }
+
+        public AST_Expression Condition { get; }
+        public AST WhileBlock { get; }
+
+        public override string GenerateAssembly() {
+            string asm = "";
+            asm += "while_" + Id + "_condition:\n";
+            asm += this.Condition.GenerateAssembly();
+            asm += "    cmp rax, 0\n";
+            asm += "    je while_" + Id + "_end\n";
+            asm += "while_" + Id + "_block:\n";
+            asm += this.WhileBlock.GenerateAssembly();
+            asm += "    jmp while_" + Id + "_condition\n";
+            asm += "while_" + Id + "_end:\n";
+            return asm;
+        }
+
+        public override string ToString() {
+            return base.ToString() + ",condition=" + this.Condition + ",whileBlock=" + this.WhileBlock + ")";
+        }
+    }
+
+    sealed class AST_DoWhile : AST {
+        public AST_DoWhile(AST_Expression condition, AST doWhileBlock) : base(ASTType.DO_WHILE) {
+            Condition = condition;
+            DoWhileBlock = doWhileBlock;
+        }
+
+        public AST_Expression Condition { get; }
+        public AST DoWhileBlock { get; }
+
+        public override string GenerateAssembly() {
+            string asm = "";
+            asm += "dowhile_" + Id + "_start:\n";
+            asm += this.DoWhileBlock.GenerateAssembly();
+            asm += "dowhile_" + Id + "_condition:\n";
+            asm += this.Condition.GenerateAssembly();
+            asm += "    cmp rax, 0\n";
+            asm += "    jne dowhile_" + Id + "_start\n";
+            asm += "dowhile_" + Id + "_end:\n";
+            return asm;
+        }
+
+        public override string ToString() {
+            return base.ToString() + ",condition=" + this.Condition + ",doWhileBlock=" + this.DoWhileBlock + ")";
+        }
+    }
+
+    sealed class AST_Switch : AST {
+        public AST_Switch(AST_Expression switchedExpression, List<AST_Expression> caseExpressions, List<AST> caseBlocks, AST defaultBlock) : base(ASTType.SWITCH) {
+            SwitchedExpression = switchedExpression;
+            CaseExpressions = caseExpressions;
+            CaseBlocks = caseBlocks;
+            DefaultBlock = defaultBlock;
+        }
+
+        public AST_Expression SwitchedExpression { get; }
+        public List<AST_Expression> CaseExpressions { get; }
+        public List<AST> CaseBlocks { get; }
+        public AST DefaultBlock { get; }
+
+        public override string GenerateAssembly() {
+            string asm = "";
+            asm += "switch_" + Id + "_start:\n"; // probably unnecessary
+            for(int i = 0; i < this.CaseExpressions.Count; i++) {
+                asm += "switch_" + Id + "_case_" + i + "_condition:\n";
+                asm += this.CaseExpressions[i].GenerateAssembly();
+                asm += "    mov r15, rax\n";
+                asm += this.SwitchedExpression.GenerateAssembly();
+                asm += "    cmp rax, r15\n";
+                asm += "    jne switch_" + Id + (i < this.CaseExpressions.Count - 1 ? "_case_" + (i+1) + "_condition" : "_default") + "\n";
+                asm += "switch_" + Id + "_case_" + i + "_code:\n";
+                asm += this.CaseBlocks[i].GenerateAssembly();
+                asm += "    jmp switch_" + Id + (i < this.CaseExpressions.Count - 1 ? "_case_" + (i+1) + "_code" : "_default") + "\n";
+            }
+            asm += "switch_" + Id + "_default:\n";
+            if(this.DefaultBlock != null) asm += this.DefaultBlock.GenerateAssembly();
+            asm += "switch_" + Id + "_end:\n";
+            return asm;
+        }
+
+        public override string ToString() {
+            return base.ToString() + ",caseExpressions=[" + String.Join(",", this.CaseExpressions) + "],caseBlocks=[" + String.Join(",", this.CaseBlocks) + "]" + (this.DefaultBlock != null ? ",defaultBlock=" + this.DefaultBlock : "") + ")";
         }
     }
 
@@ -109,12 +206,12 @@ namespace Ion {
         public override string GenerateAssembly() {
             string asm = "";
             asm += Value.GenerateAssembly();
-            asm += "mov [var_" + Variable.Id + "], rax\n";
+            asm += "    mov [var_" + this.Variable.Id + "], rax\n";
             return asm;
         }
 
         public override string ToString() {
-            return base.ToString() + ",variable=" + Variable + ",value=" + Value + ")";
+            return base.ToString() + ",variable=" + this.Variable + ",value=" + this.Value + ")";
         }
     }
 
@@ -126,11 +223,11 @@ namespace Ion {
         public Variable Variable { get; }
 
         public override string GenerateAssembly() {
-            return "    mov rax, [var_" + Variable.Id + "]\n";
+            return "    mov rax, [var_" + this.Variable.Id + "]\n";
         }
 
         public override string ToString() {
-            return base.ToString() + ",variable=" + Variable + ")";
+            return base.ToString() + ",variable=" + this.Variable + ")";
         }
     }
 
@@ -142,11 +239,11 @@ namespace Ion {
         public string Value { get; }
 
         public override string GenerateAssembly() {
-            return "    mov rax, " + Value + "\n";
+            return "    mov rax, " + this.Value + "\n";
         }
 
         public override string ToString() {
-            return base.ToString() + ",value=" + Value + ")";
+            return base.ToString() + ",value=" + this.Value + ")";
         }
     }
 
@@ -162,7 +259,7 @@ namespace Ion {
         }
 
         public override string ToString() {
-            return base.ToString() + ",value=" + Value + ")";
+            return base.ToString() + ",value=" + this.Value + ")";
         }
     }
 
@@ -175,7 +272,7 @@ namespace Ion {
 
         public override string GenerateAssembly() {
             string asm = "";
-            asm += Expression.GenerateAssembly();
+            asm += this.Expression.GenerateAssembly();
             asm += "    mov [cbuf], al\n";
             asm += "    mov rax, 1\n";
             asm += "    mov rdi, 1\n";
@@ -186,7 +283,7 @@ namespace Ion {
         }
 
         public override string ToString() {
-            return base.ToString() + ",expression=" + Expression + ")";
+            return base.ToString() + ",expression=" + this.Expression + ")";
         }
     }
 
@@ -199,12 +296,12 @@ namespace Ion {
 
         public override string GenerateAssembly() {
             string asm = "";
-            asm += "    call function_" + Function.Id + "\n";
+            asm += "    call function_" + this.Function.Id + "\n";
             return asm;
         }
 
         public override string ToString() {
-            return base.ToString() + ",identifier=" + Function.Identifier + ")";
+            return base.ToString() + ",identifier=" + this.Function.Identifier + ")";
         }
     }
 
@@ -220,17 +317,17 @@ namespace Ion {
         public override string GenerateAssembly() {
             string asm = "";
             asm += Expression.GenerateAssembly();
-            if(Operator == TokenType.MINUS) asm += "    neg rax\n";
+            if(this.Operator == TokenType.MINUS) asm += "    neg rax\n";
             return asm;
         }
 
         public override string ToString() {
-            return base.ToString() + ",expression=" + Expression + ",operator=" + Operator + ")";
+            return base.ToString() + ",expression=" + this.Expression + ",operator=" + this.Operator + ")";
         }
     }
 
-    sealed class AST_Calculation : AST_Expression {
-        public AST_Calculation(TokenType _operator, AST_Expression a, AST_Expression b) : base(ASTType.CALCULATION) {
+    sealed class AST_Conjunction : AST_Expression {
+        public AST_Conjunction(TokenType _operator, AST_Expression a, AST_Expression b) : base(ASTType.CONJUNCTION) {
             Operator = _operator;
             A = a;
             B = b;
@@ -242,21 +339,91 @@ namespace Ion {
 
         public override string GenerateAssembly() {
             string asm = "";
-            asm += A.GenerateAssembly();
-            asm += "    mov r15, rax\n";
-            asm += B.GenerateAssembly();
-            if(Operator == TokenType.PLUS) asm += "    add rax, r15\n";
-            else if(Operator == TokenType.MINUS) {
-                asm += "    sub r15, rax\n";
-                asm += "    mov rax, r15\n";
-            } else if(Operator == TokenType.STAR) asm += "    imul rax, r15\n";
-            else if(Operator == TokenType.SLASH) throw new NotImplementedException();
-            else throw new NotImplementedException();
+            asm += this.A.GenerateAssembly();
+            asm += "    push rax\n";
+            asm += this.B.GenerateAssembly();
+            switch(this.Operator) {
+                // CALCULATION
+                case TokenType.PLUS: {
+                    asm += "    pop rbx\n";
+                    asm += "    add rax, rbx\n";
+                    break;
+                }
+                case TokenType.MINUS: {
+                    asm += "    mov rbx, rax\n";
+                    asm += "    pop rax\n";
+                    asm += "    sub rax, rbx\n";
+                    break;
+                }
+                case TokenType.STAR: {
+                    asm += "    pop rbx\n";
+                    asm += "    imul rax, rbx\n";
+                    break;
+                }
+                case TokenType.SLASH: {
+                    throw new NotImplementedException();
+                }
+                default: {
+                    // COMPARISON
+                    if(Utils.ComparisonOperators.ContainsKey(this.Operator)) {
+                        asm += "    pop rbx\n";
+                        asm += "    cmp rbx, rax\n";
+                        asm += "    mov rax, 0\n";
+                        asm += "    set" + Utils.ComparisonOperators[this.Operator] + " al\n";
+                        break;
+                    }
+                    throw new NotImplementedException();
+                }
+            }
             return asm;
         }
 
         public override string ToString() {
-            return base.ToString() + ",operator=" + Operator + ",a=" + A + ",b=" + B + ")";
+            return base.ToString() + ",operator=" + this.Operator + ",a=" + this.A + ",b=" + this.B + ")";
+        }
+    }
+
+    sealed class AST_Increment : AST_Expression {
+        public AST_Increment(Variable variable, IncDecType incDecType) : base(ASTType.INCREMENT) {
+            Variable = variable;
+            IncDecType = incDecType;
+        }
+
+        public Variable Variable { get; }
+        public IncDecType IncDecType { get; }
+
+        public override string GenerateAssembly() {
+            string asm = "";
+            if(this.IncDecType == IncDecType.AFTER) asm += "    mov rax, [var_" + this.Variable.Id + "]\n";
+            asm += "    inc QWORD [var_" + this.Variable.Id + "]\n";
+            if(this.IncDecType == IncDecType.BEFORE) asm += "    mov rax, [var_" + this.Variable.Id + "]\n";
+            return asm;
+        }
+
+        public override string ToString() {
+            return base.ToString() + ",variable=" + this.Variable + ",incDecType=" + this.IncDecType + ")";
+        }
+    }
+
+    sealed class AST_Decrement : AST_Expression {
+        public AST_Decrement(Variable variable, IncDecType incDecType) : base(ASTType.DECREMENT) {
+            Variable = variable;
+            IncDecType = incDecType;
+        }
+
+        public Variable Variable { get; }
+        public IncDecType IncDecType { get; }
+
+        public override string GenerateAssembly() {
+            string asm = "";
+            if(this.IncDecType == IncDecType.AFTER) asm += "    mov rax, [var_" + this.Variable.Id + "]\n";
+            asm += "    dec QWORD [var_" + this.Variable.Id + "]\n";
+            if(this.IncDecType == IncDecType.BEFORE) asm += "    mov rax, [var_" + this.Variable.Id + "]\n";
+            return asm;
+        }
+
+        public override string ToString() {
+            return base.ToString() + ",variable=" + this.Variable + ",incDecType=" + this.IncDecType + ")";
         }
     }
 

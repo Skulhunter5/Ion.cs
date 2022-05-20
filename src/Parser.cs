@@ -212,24 +212,25 @@ namespace Ion {
                 return expression;
             }
 
+            if(Current.TokenType == TokenType.KEYWORD && Current.Value == "var") { // TEMPORARY
+                NextToken(); // Eat: KEYWORD "var"
+                string varName = Current.Value;
+                Eat(TokenType.IDENTIFIER);
+                AST_Assignment assignment = null;
+                Variable variable = DeclareVariable(varName);
+                if(Current.TokenType == TokenType.ASSIGN) { // IDENTIFIER IDENTIFIER =
+                    NextToken(); // Eat: ASSIGN
+                    AST_Expression valueExpression = ParseExpression();
+                    assignment = new AST_Assignment(variable, valueExpression);
+                }
+                return assignment;
+            }
+
             switch(Current.TokenType) {
                 case TokenType.IDENTIFIER: { // IDENTIFIER
                     Token tok = Current;
                     string val = Current.Value;
                     switch(NextToken().TokenType) {
-                        case TokenType.IDENTIFIER: { // IDENTIFIER IDENTIFIER
-                            string val2 = Current.Value;
-                            NextToken();
-                            if(Current.TokenType == TokenType.ASSIGN) { // IDENTIFIER IDENTIFIER =
-                                NextToken();
-                                AST_Expression valueExpression = ParseExpression();
-                                Variable variable = DeclareVariable(val2);
-                                return new AST_Assignment(variable, valueExpression);
-                            } else {
-                                DeclareVariable(val2);
-                                return null;
-                            }
-                        }
                         case TokenType.ASSIGN: { // IDENTIFIER =
                             NextToken(); // Eat: ASSIGN
                             AST_Expression valueExpression = ParseExpression();

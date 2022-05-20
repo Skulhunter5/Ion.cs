@@ -73,7 +73,9 @@ namespace Ion {
             "case",
             "default",
             
-            "function", // TEMPORARY
+            // TEMPORARY
+            "function",
+            "var",
         };
 
         private Token ParseIdentifier() {

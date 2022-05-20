@@ -195,18 +195,27 @@ namespace Ion {
     // Expressions
 
     sealed class AST_Assignment : AST_Expression {
-        public AST_Assignment(Variable variable, AST_Expression value) : base(ASTType.ASSIGNMENT) {
+        public AST_Assignment(Variable variable, TokenType assignmentType, AST_Expression value) : base(ASTType.ASSIGNMENT) {
             Variable = variable;
+            AssignmentType = assignmentType;
             Value = value;
         }
 
         public Variable Variable { get; }
+        public TokenType AssignmentType { get; }
         public AST_Expression Value { get; }
 
         public override string GenerateAssembly() {
             string asm = "";
-            asm += Value.GenerateAssembly();
-            asm += "    mov [var_" + this.Variable.Id + "], rax\n";
+            asm += this.Value.GenerateAssembly();
+            if(AssignmentType == TokenType.ASSIGN) asm += "    mov [var_" + this.Variable.Id + "], rax\n";
+            else if(AssignmentType == TokenType.PLUS_EQ) asm += "    add [var_" + this.Variable.Id + "], rax\n";
+            else if(AssignmentType == TokenType.MINUS_EQ) asm += "    sub [var_" + this.Variable.Id + "], rax\n";
+            else if(AssignmentType == TokenType.STAR_EQ) {
+                asm += "    mov rbx, [var_" + this.Variable.Id + "]\n";
+                asm += "    imul rax, rbx\n";
+                asm += "    mov [var_" + this.Variable.Id + "], rax\n";
+            } else if(AssignmentType == TokenType.SLASH_EQ) throw new NotImplementedException(); // TODO: implement division
             return asm;
         }
 
@@ -361,7 +370,7 @@ namespace Ion {
                     break;
                 }
                 case TokenType.SLASH: {
-                    throw new NotImplementedException();
+                    throw new NotImplementedException(); // TODO: implement division
                 }
                 default: {
                     // COMPARISON

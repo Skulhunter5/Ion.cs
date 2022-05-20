@@ -221,30 +221,33 @@ namespace Ion {
                 if(Current.TokenType == TokenType.ASSIGN) {
                     Eat(); // ASSIGN
                     AST_Expression valueExpression = ParseExpression();
-                    assignment = new AST_Assignment(variable, valueExpression);
+                    assignment = new AST_Assignment(variable, TokenType.ASSIGN, valueExpression);
                 }
                 return assignment;
             }
 
             switch(Current.TokenType) {
                 case TokenType.IDENTIFIER: {
-                    Token tok = Current;
-                    string val = Current.Value;
-                    switch(Eat().TokenType) {
-                        case TokenType.ASSIGN: {
-                            Eat(); // ASSIGN
-                            AST_Expression valueExpression = ParseExpression();
-                            return new AST_Assignment(GetVariable(tok.Value, tok.Position), valueExpression);
-                        }
+                    Token token = Current;
+                    Eat(); // IDENTIFIER
+                    switch(Current.TokenType) {
                         case TokenType.LPAREN: {
                             Eat(); // LPAREN
                             Eat(TokenType.RPAREN);
-                            if(!_functions.ContainsKey(val)) ErrorSystem.AddError_i(new UnknownFunctionError(tok));
-                            return new AST_FunctionCall(_functions[val]);
+                            if(!_functions.ContainsKey(token.Value)) ErrorSystem.AddError_i(new UnknownFunctionError(token));
+                            return new AST_FunctionCall(_functions[token.Value]);
                         }
-                        case TokenType.INCREMENT: return EatWith(new AST_Increment(GetVariable(tok.Value, tok.Position), IncDecType.AFTER)); // Eat: INCREMENT
-                        case TokenType.DECREMENT: return EatWith(new AST_Decrement(GetVariable(tok.Value, tok.Position), IncDecType.AFTER)); // Eat: INCREMENT
-                        default: return new AST_Access(GetVariable(val, tok.Position));
+                        case TokenType.INCREMENT: return EatWith(new AST_Increment(GetVariable(token.Value, token.Position), IncDecType.AFTER)); // Eat: INCREMENT
+                        case TokenType.DECREMENT: return EatWith(new AST_Decrement(GetVariable(token.Value, token.Position), IncDecType.AFTER)); // Eat: INCREMENT
+                        default: {
+                            if(Utils.AssignmentTokens.Contains(Current.TokenType)) {
+                                TokenType assigmentType = Current.TokenType;
+                                Eat(); // [assignment token]
+                                AST_Expression valueExpression = ParseExpression();
+                                return new AST_Assignment(GetVariable(token.Value, token.Position), assigmentType, valueExpression);
+                            }
+                            return new AST_Access(GetVariable(token.Value, token.Position));
+                        }
                     }
                 }
                 case TokenType.INTEGER: return EatWith(new AST_Integer(Current.Value));

@@ -19,6 +19,14 @@ namespace Ion {
             {TokenType.GTEQ, "ge"},
         };
 
+        public static HashSet<TokenType> AssignmentTokens = new HashSet<TokenType>() {
+            TokenType.ASSIGN,
+            TokenType.PLUS_EQ,
+            TokenType.MINUS_EQ,
+            TokenType.STAR_EQ,
+            TokenType.SLASH_EQ,
+        };
+
         private static Dictionary<TokenType, int> Operators = new Dictionary<TokenType, int>() {
             {TokenType.EQ, 1},
             {TokenType.NEQ, 1},

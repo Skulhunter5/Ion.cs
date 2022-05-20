@@ -47,13 +47,21 @@ namespace Ion {
 
         private void ParseDeclaration() {
             while(Current.TokenType != TokenType.EOF) {
-                Eat(TokenType.KEYWORD, "function");
-                string val = Current.Value;
-                Eat(TokenType.IDENTIFIER);
-                Eat(TokenType.LPAREN);
-                Eat(TokenType.RPAREN);
-                AST body = ParseBlock();
-                _functions.Add(val, new Function(val, body));
+                Token token = Current;
+                Eat(TokenType.KEYWORD);
+                if(token.Value == "function") {
+                    string name = Current.Value;
+                    Eat(TokenType.IDENTIFIER);
+                    Eat(TokenType.LPAREN);
+                    Eat(TokenType.RPAREN);
+                    AST body = ParseBlock();
+                    _functions.Add(name, new Function(name, body));
+                } else if(token.Value == "var") {
+                    string name = Current.Value;
+                    Eat(TokenType.IDENTIFIER);
+                    DeclareVariable(name);
+                    Eat(TokenType.SEMICOLON);
+                } else throw new NotImplementedException();
             }
         }
 
@@ -213,10 +221,10 @@ namespace Ion {
 
             if(Current.TokenType == TokenType.KEYWORD && Current.Value == "var") { // TEMPORARY
                 Eat(); // KEYWORD "var"
-                string varName = Current.Value;
+                string name = Current.Value;
                 Eat(TokenType.IDENTIFIER);
                 AST_Assignment assignment = null;
-                Variable variable = DeclareVariable(varName);
+                Variable variable = DeclareVariable(name);
                 if(Current.TokenType == TokenType.ASSIGN) {
                     Eat(); // ASSIGN
                     AST_Expression valueExpression = ParseExpression();

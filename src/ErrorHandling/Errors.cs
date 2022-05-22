@@ -132,4 +132,40 @@ namespace Ion {
         }
     }
 
+    sealed class UnknownDataTypeError : ParserError {
+        public UnknownDataTypeError(Token got) {
+            Got = got;
+        }
+
+        public Token Got { get; }
+
+        public override string ToString() {
+            return base.ToString() + "Unknown DataType: '" + Got.Value + "' at " + Got.Position;
+        }
+    }
+
+    sealed class VariableRedeclarationError : ParserError {
+        public VariableRedeclarationError(Token name) {
+            Name = name;
+        }
+
+        public Token Name { get; }
+
+        public override string ToString() {
+            return base.ToString() + "Trying to redeclare variable: '" + Name.Value + "' at " + Name.Position;
+        }
+    }
+
+    sealed class DataTypeNotValidInGivenContextError : ParserError {
+        public DataTypeNotValidInGivenContextError(Token dataType) {
+            DataType = dataType;
+        }
+
+        public Token DataType { get; }
+
+        public override string ToString() {
+            return base.ToString() + "'" + DataType.Value + "' is a type, which is not valid in the given context (" + DataType.Position + ")";
+        }
+    }
+
 }

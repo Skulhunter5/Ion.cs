@@ -11,6 +11,7 @@ namespace Ion {
 
         private Dictionary<string, Function> _functions = new Dictionary<string, Function>();
         private Dictionary<string, Variable> _variables = new Dictionary<string, Variable>();
+        private DataTypes _types = new DataTypes();
 
         public Parser(List<Token> tokens) {
             _tokens = tokens;
@@ -47,20 +48,23 @@ namespace Ion {
 
         private void ParseDeclaration() {
             while(Current.TokenType != TokenType.EOF) {
-                Token token = Current;
-                Eat(TokenType.KEYWORD);
-                if(token.Value == "function") {
+                if(Current.TokenType == TokenType.KEYWORD && Current.Value == "function") {
+                    Eat(); // KEYWORD "function"
                     string name = Current.Value;
                     Eat(TokenType.IDENTIFIER);
                     Eat(TokenType.LPAREN);
                     Eat(TokenType.RPAREN);
                     AST body = ParseBlock();
                     _functions.Add(name, new Function(name, body));
-                } else if(token.Value == "var") {
-                    string name = Current.Value;
-                    Eat(TokenType.IDENTIFIER);
-                    DeclareVariable(name);
-                    Eat(TokenType.SEMICOLON);
+                } else if(Current.TokenType == TokenType.IDENTIFIER) {
+                    Token token = Current;
+                    Eat(); // IDENTIFIER
+                    if(_types.DataTypeExists(token.Value)) {
+                        Token name = Current;
+                        Eat(TokenType.IDENTIFIER);
+                        DeclareVariable(name, _types.GetDataType(token));
+                        Eat(TokenType.SEMICOLON);
+                    } else ErrorSystem.AddError_i(new UnknownDataTypeError(token));
                 } else throw new NotImplementedException();
             }
         }
@@ -219,24 +223,23 @@ namespace Ion {
                 return expression;
             }
 
-            if(Current.TokenType == TokenType.KEYWORD && Current.Value == "var") { // TEMPORARY
-                Eat(); // KEYWORD "var"
-                string name = Current.Value;
-                Eat(TokenType.IDENTIFIER);
-                AST_Assignment assignment = null;
-                Variable variable = DeclareVariable(name);
-                if(Current.TokenType == TokenType.ASSIGN) {
-                    Eat(); // ASSIGN
-                    AST_Expression valueExpression = ParseExpression();
-                    assignment = new AST_Assignment(variable, TokenType.ASSIGN, valueExpression);
-                }
-                return assignment;
-            }
-
             switch(Current.TokenType) {
                 case TokenType.IDENTIFIER: {
                     Token token = Current;
                     Eat(); // IDENTIFIER
+                    if(_types.DataTypeExists(token.Value)) {
+                        Eat(); // identifier "[type]"
+                        Token name = Current;
+                        Eat(TokenType.IDENTIFIER);
+                        AST_Assignment assignment = null;
+                        Variable variable = DeclareVariable(name, _types.GetDataType(token));
+                        if(Current.TokenType == TokenType.ASSIGN) {
+                            Eat(); // ASSIGN
+                            AST_Expression valueExpression = ParseExpression();
+                            assignment = new AST_Assignment(variable, TokenType.ASSIGN, valueExpression);
+                        }
+                        return assignment;
+                    }
                     switch(Current.TokenType) {
                         case TokenType.LPAREN: {
                             Eat(); // LPAREN
@@ -244,16 +247,16 @@ namespace Ion {
                             if(!_functions.ContainsKey(token.Value)) ErrorSystem.AddError_i(new UnknownFunctionError(token));
                             return new AST_FunctionCall(_functions[token.Value]);
                         }
-                        case TokenType.INCREMENT: return EatWith(new AST_Increment(GetVariable(token.Value, token.Position), IncDecType.AFTER)); // Eat: INCREMENT
-                        case TokenType.DECREMENT: return EatWith(new AST_Decrement(GetVariable(token.Value, token.Position), IncDecType.AFTER)); // Eat: INCREMENT
+                        case TokenType.INCREMENT: return EatWith(new AST_Increment(GetVariable(token), IncDecType.AFTER)); // Eat: INCREMENT
+                        case TokenType.DECREMENT: return EatWith(new AST_Decrement(GetVariable(token), IncDecType.AFTER)); // Eat: INCREMENT
                         default: {
                             if(Utils.AssignmentTokens.Contains(Current.TokenType)) {
                                 TokenType assigmentType = Current.TokenType;
                                 Eat(); // [assignment token]
                                 AST_Expression valueExpression = ParseExpression();
-                                return new AST_Assignment(GetVariable(token.Value, token.Position), assigmentType, valueExpression);
+                                return new AST_Assignment(GetVariable(token), assigmentType, valueExpression);
                             }
-                            return new AST_Access(GetVariable(token.Value, token.Position));
+                            return new AST_Access(GetVariable(token));
                         }
                     }
                 }
@@ -261,15 +264,15 @@ namespace Ion {
                 case TokenType.FLOAT: return EatWith(new AST_Float(Current.Value));
                 case TokenType.INCREMENT: {
                     Eat(); // INCREMENT
-                    Token tok = Current;
+                    Token token = Current;
                     Eat(TokenType.IDENTIFIER);
-                    return new AST_Increment(GetVariable(tok.Value, tok.Position), IncDecType.BEFORE);
+                    return new AST_Increment(GetVariable(token), IncDecType.BEFORE);
                 }
                 case TokenType.DECREMENT: {
                     Eat(); // INCREMENT
-                    Token tok = Current;
+                    Token token = Current;
                     Eat(TokenType.IDENTIFIER);
-                    return new AST_Decrement(GetVariable(tok.Value, tok.Position), IncDecType.BEFORE);
+                    return new AST_Decrement(GetVariable(token), IncDecType.BEFORE);
                 }
                 default:
                     Console.WriteLine("]] Unimplemented exception 1: " + Current);
@@ -277,15 +280,17 @@ namespace Ion {
             }
         }
 
-        private Variable DeclareVariable(string identifier) {
-            Variable variable = new Variable(identifier);
-            _variables.Add(identifier, variable);
+        private Variable DeclareVariable(Token identifier, DataType dataType) {
+            if(_variables.ContainsKey(identifier.Value)) ErrorSystem.AddError_i(new VariableRedeclarationError(identifier));
+
+            Variable variable = new Variable(identifier.Value, dataType);
+            _variables.Add(identifier.Value, variable);
             return variable;
         }
 
-        private Variable GetVariable(string identifier, Position position) {
-            if(!_variables.ContainsKey(identifier)) ErrorSystem.AddError_i(new UnknownVariableError(identifier, position));
-            return _variables[identifier];
+        private Variable GetVariable(Token identifier) {
+            if(!_variables.ContainsKey(identifier.Value)) ErrorSystem.AddError_i(new UnknownVariableError(identifier.Value, identifier.Position));
+            return _variables[identifier.Value];
         }
 
     }

@@ -18,27 +18,37 @@ namespace Ion {
             Current = _tokens[_position];
         }
 
-        Token Eat() {
+        private Token Eat() {
             _position++;
             if(_position >= _tokens.Count) return _tokens[_tokens.Count - 1];
             Current = _tokens[_position];
             return Current;
         }
 
-        AST_Expression EatWith(AST_Expression ast) {
+        private AST_Expression EatWith(AST_Expression ast) {
             Eat();
             return ast;
         }
 
-        void Eat(TokenType tokenType) { // MAYBE: return the eaten token
+        private void Eat(TokenType tokenType) { // MAYBE: return the eaten token
             if(Current.TokenType != tokenType) ErrorSystem.AddError_i(new ExpectedDifferentTokenError(tokenType, Current));
             Eat();
         }
 
-        void Eat(TokenType tokenType, string value) { // MAYBE: return the eaten token
+        private void Eat(TokenType tokenType, string value) { // MAYBE: return the eaten token
             if(Current.TokenType != tokenType) ErrorSystem.AddError_i(new ExpectedDifferentTokenError(tokenType, Current));
             if(Current.Value != value) ErrorSystem.AddError_i(new ExpectedDifferentValueError(value, Current));
             Eat();
+        }
+
+        private DataType ParseDataType() {
+            Token value = Current;
+            Eat(TokenType.IDENTIFIER);
+            DataType dataType = _types.GetDataType(value);
+            uint pointerN = 0;
+            while(Current.TokenType == TokenType.STAR) pointerN++;
+            if(pointerN > 0) dataType = new DataType(dataType.PointerValue, pointerN, dataType.DT_Class);
+            return dataType;
         }
 
         public Program run() {
@@ -48,23 +58,20 @@ namespace Ion {
 
         private void ParseDeclaration() {
             while(Current.TokenType != TokenType.EOF) {
-                if(Current.TokenType == TokenType.KEYWORD && Current.Value == "function") {
-                    Eat(); // KEYWORD "function"
-                    string name = Current.Value;
-                    Eat(TokenType.IDENTIFIER);
+                DataType dataType = ParseDataType();
+                Token name = Current;
+                Eat(TokenType.IDENTIFIER);
+                if(Current.TokenType == TokenType.LPAREN) {
                     Eat(TokenType.LPAREN);
                     Eat(TokenType.RPAREN);
                     AST body = ParseBlock();
-                    _functions.Add(name, new Function(name, body));
-                } else if(Current.TokenType == TokenType.IDENTIFIER) {
+                    _functions.Add(name.Value, new Function(name.Value, body));
+                } else if(Current.TokenType == TokenType.SEMICOLON) {
                     Token token = Current;
                     Eat(); // IDENTIFIER
-                    if(_types.DataTypeExists(token.Value)) {
-                        Token name = Current;
-                        Eat(TokenType.IDENTIFIER);
-                        DeclareVariable(name, _types.GetDataType(token));
-                        Eat(TokenType.SEMICOLON);
-                    } else ErrorSystem.AddError_i(new UnknownDataTypeError(token));
+                    Eat(TokenType.IDENTIFIER);
+                    DeclareVariable(name, dataType);
+                    Eat(TokenType.SEMICOLON);
                 } else throw new NotImplementedException();
             }
         }
@@ -256,6 +263,7 @@ namespace Ion {
                                 AST_Expression valueExpression = ParseExpression();
                                 return new AST_Assignment(GetVariable(token), assigmentType, valueExpression);
                             }
+                            // CWD
                             return new AST_Access(GetVariable(token));
                         }
                     }

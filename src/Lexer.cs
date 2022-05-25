@@ -72,6 +72,8 @@ namespace Ion {
             "switch",
             "case",
             "default",
+            // STRUCT
+            "struct",
         };
 
         private Token ParseIdentifier() {

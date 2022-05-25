@@ -18,6 +18,16 @@ namespace Ion {
             Current = _tokens[_position];
         }
 
+        private Token Peek(int offset) {
+            if(_position + offset >= _tokens.Count) return _tokens[_tokens.Count - 1];
+            return _tokens[_position + offset];
+        }
+
+        private void Back() {
+            if(_position > 0) _position--;
+            Current = _tokens[_position];
+        }
+
         private Token Eat() {
             _position++;
             if(_position >= _tokens.Count) return _tokens[_tokens.Count - 1];
@@ -47,7 +57,7 @@ namespace Ion {
             DataType dataType = _types.GetDataType(value);
             uint pointerN = 0;
             while(Current.TokenType == TokenType.STAR) pointerN++;
-            if(pointerN > 0) dataType = new DataType(dataType.PointerValue, pointerN, dataType.DT_Class);
+            if(pointerN > 0) dataType = new DataType(dataType.PointerValue, pointerN, dataType.DT_Class, dataType.DT_Struct);
             return dataType;
         }
 
@@ -58,22 +68,49 @@ namespace Ion {
 
         private void ParseDeclaration() {
             while(Current.TokenType != TokenType.EOF) {
-                DataType dataType = ParseDataType();
-                Token name = Current;
-                Eat(TokenType.IDENTIFIER);
-                if(Current.TokenType == TokenType.LPAREN) {
-                    Eat(TokenType.LPAREN);
-                    Eat(TokenType.RPAREN);
-                    AST body = ParseBlock();
-                    _functions.Add(name.Value, new Function(name.Value, body));
-                } else if(Current.TokenType == TokenType.SEMICOLON) {
-                    Token token = Current;
-                    Eat(); // IDENTIFIER
+                if(Current.TokenType == TokenType.KEYWORD) {
+                    if(Current.Value == "struct") {
+                        Eat(); // KEYWORD "struct"
+                        Token name = Current;
+                        Eat(TokenType.IDENTIFIER);
+                        DT_Struct dT_Struct = ParseStruct(name);
+                        _types.Add(dT_Struct);
+                    }
+                } else if(Current.TokenType == TokenType.IDENTIFIER) {
+                    DataType dataType = ParseDataType();
+                    Token name = Current;
                     Eat(TokenType.IDENTIFIER);
-                    DeclareVariable(name, dataType);
-                    Eat(TokenType.SEMICOLON);
+                    if(Current.TokenType == TokenType.LPAREN) {
+                        Eat(TokenType.LPAREN);
+                        Eat(TokenType.RPAREN);
+                        AST body = ParseBlock();
+                        _functions.Add(name.Value, new Function(name.Value, body));
+                    } else if(Current.TokenType == TokenType.SEMICOLON) {
+                        Token token = Current;
+                        Eat(); // IDENTIFIER
+                        Eat(TokenType.IDENTIFIER);
+                        DeclareVariable(name, dataType);
+                        Eat(TokenType.SEMICOLON);
+                    } else throw new NotImplementedException();
                 } else throw new NotImplementedException();
             }
+        }
+
+        private DT_Struct ParseStruct(Token name) {
+            Eat(TokenType.LBRACE);
+
+            Dictionary<string, DataType> fields = new Dictionary<string, DataType>();
+            while(Current.TokenType != TokenType.RBRACE) {
+                DataType dataType = ParseDataType();
+                Token fieldName = Current;
+                Eat(TokenType.IDENTIFIER);
+                Eat(TokenType.SEMICOLON);
+                fields.Add(fieldName.Value, dataType);
+            }
+
+            Eat(TokenType.RBRACE);
+
+            return new DT_Struct(name.Value, fields);
         }
 
         private AST ParseBlock() {
@@ -234,19 +271,6 @@ namespace Ion {
                 case TokenType.IDENTIFIER: {
                     Token token = Current;
                     Eat(); // IDENTIFIER
-                    if(_types.DataTypeExists(token.Value)) {
-                        Eat(); // identifier "[type]"
-                        Token name = Current;
-                        Eat(TokenType.IDENTIFIER);
-                        AST_Assignment assignment = null;
-                        Variable variable = DeclareVariable(name, _types.GetDataType(token));
-                        if(Current.TokenType == TokenType.ASSIGN) {
-                            Eat(); // ASSIGN
-                            AST_Expression valueExpression = ParseExpression();
-                            assignment = new AST_Assignment(variable, TokenType.ASSIGN, valueExpression);
-                        }
-                        return assignment;
-                    }
                     switch(Current.TokenType) {
                         case TokenType.LPAREN: {
                             Eat(); // LPAREN
@@ -263,7 +287,23 @@ namespace Ion {
                                 AST_Expression valueExpression = ParseExpression();
                                 return new AST_Assignment(GetVariable(token), assigmentType, valueExpression);
                             }
-                            // CWD
+
+                            if(Current.TokenType == TokenType.IDENTIFIER || Current.TokenType == TokenType.STAR) {
+                                Back();
+                                DataType dataType = ParseDataType();
+                                Token name = Current;
+                                Eat(TokenType.IDENTIFIER);
+
+                                AST_Assignment assignment = null;
+                                Variable variable = DeclareVariable(name, _types.GetDataType(token));
+                                if(Current.TokenType == TokenType.ASSIGN) {
+                                    Eat(); // ASSIGN
+                                    AST_Expression valueExpression = ParseExpression();
+                                    assignment = new AST_Assignment(variable, TokenType.ASSIGN, valueExpression);
+                                }
+                                return assignment;
+                            }
+
                             return new AST_Access(GetVariable(token));
                         }
                     }
